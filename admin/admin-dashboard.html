@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>لوحة تحكم الأدمن</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+</head>
+<body class="bg-gray-900 text-white min-h-screen flex flex-col">
+
+<header class="bg-gray-800 p-4 flex justify-between items-center">
+  <h1 class="text-xl font-bold">لوحة تحكم الأدمن</h1>
+  <button id="logoutBtn" class="bg-red-600 px-4 py-2 rounded hover:bg-red-700">تسجيل خروج</button>
+</header>
+
+<main class="flex-grow p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+
+  <a href="orders.html" class="bg-blue-600 rounded-lg p-6 text-center hover:bg-blue-700 transition">
+    <h2 class="text-lg font-semibold mb-2">عرض الطلبات</h2>
+    <p>تحديث حالة الطلبات ومتابعة الشحن</p>
+  </a>
+
+  <a href="books.html" class="bg-green-600 rounded-lg p-6 text-center hover:bg-green-700 transition">
+    <h2 class="text-lg font-semibold mb-2">إدارة الكتب</h2>
+    <p>إضافة وتعديل وحذف الكتب</p>
+  </a>
+
+  <a href="users.html" class="bg-yellow-600 rounded-lg p-6 text-center hover:bg-yellow-700 transition">
+    <h2 class="text-lg font-semibold mb-2">عرض المستخدمين</h2>
+    <p>عرض معلومات وتفاصيل المستخدمين</p>
+  </a>
+
+</main>
+
+<script>
+  const auth = firebase.auth();
+
+  document.getElementById('logoutBtn').addEventListener('click', () => {
+    auth.signOut().then(() => {
+      window.location.href = "admin-login.html";
+    });
+  });
+
+  // تحقق من تسجيل دخول الأدمن
+  auth.onAuthStateChanged(user => {
+    if (!user) {
+      window.location.href = "admin-login.html";
+    }
+  });
+</script>
+
+</body>
+</html>
