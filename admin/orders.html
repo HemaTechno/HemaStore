@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>الطلبات</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+</head>
+<body class="bg-gray-900 text-white min-h-screen p-6">
+
+<header class="flex justify-between items-center mb-6">
+  <h1 class="text-2xl font-bold">الطلبات</h1>
+  <a href="admin-dashboard.html" class="bg-gray-700 px-4 py-2 rounded hover:bg-gray-600">العودة للوحة التحكم</a>
+</header>
+
+<table class="w-full table-auto border-collapse border border-gray-700">
+  <thead>
+    <tr class="bg-gray-800">
+      <th class="border border-gray-600 p-2">رقم الطلب</th>
+      <th class="border border-gray-600 p-2">اسم المستخدم</th>
+      <th class="border border-gray-600 p-2">المنتجات</th>
+      <th class="border border-gray-600 p-2">الحالة</th>
+      <th class="border border-gray-600 p-2">تحديث الحالة</th>
+    </tr>
+  </thead>
+  <tbody id="ordersTableBody"></tbody>
+</table>
+
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyAX8PWbKfWeBYzmX7sdrBhIT0Wp1yPjR04",
+    authDomain: "hemaern.firebaseapp.com",
+    databaseURL: "https://hemaern-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "hemaern",
+    storageBucket: "hemaern.firebasestorage.app",
+    messagingSenderId: "533729874483",
+    appId: "1:533729874483:web:142462fdbd96156fe30946"
+  };
+  firebase.initializeApp(firebaseConfig);
+
+  const auth = firebase.auth();
+  const db = firebase.database();
+
+  const ordersTableBody = document.getElementById('ordersTableBody');
+
+  auth.onAuthStateChanged(user => {
+    if (!user) {
+      window.location.href = "admin-login.html";
+      return;
+    }
+    loadOrders();
+  });
+
+  function loadOrders() {
+    db.ref('orders').on('value', snapshot => {
+      ordersTableBody.innerHTML = '';
+      const orders = snapshot.val();
+      if (!orders) {
+        ordersTableBody.innerHTML = '<tr><td colspan="5" class="text-center p-4">لا توجد طلبات</td></tr>';
+        return;
+      }
+      Object.entries(orders).forEach(([orderId, order]) => {
+        const tr = document.createElement('tr');
+        tr.classList.add('border', 'border-gray-600');
+
+        const userName = order.userName || 'غير معروف';
+
+        // المنتجات (اسم الكتاب والكمية)
+        let productsHtml = '';
+        for (const [bookId, bookInfo] of Object.entries(order.products || {})) {
+          productsHtml += `<div>${bookInfo.title} (الكمية: ${bookInfo.quantity})</div>`;
+        }
+
+        // حالة الطلب (مدفوع، جاري تجهيز، جاهز للشحن، خرج للشحن)
+        const statusOptions = ['مدفوع', 'جاري تجهيز', 'جاهز للشحن', 'خرج للشحن'];
+
+        const statusSelect = document.createElement('select');
+        statusSelect.className = 'bg-gray-700 text-white p-1 rounded';
+        statusOptions.forEach(status => {
+          const option = document.createElement('option');
+          option.value = status;
+          option.textContent = status;
+          if (order.status === status) option.selected = true;
+          statusSelect.appendChild(option);
+        });
+        statusSelect.addEventListener('change', () => {
+          db.ref(`orders/${orderId}/status`).set(statusSelect.value);
+        });
+
+        tr.innerHTML = `
+          <td class="border border-gray-600 p-2 text-center">${orderId}</td>
+          <td class="border border-gray-600 p-2 text-center">${userName}</td>
+          <td class="border border-gray-600 p-2">${productsHtml}</td>
+          <td class="border border-gray-600 p-2 text-center">${order.status}</td>
+        `;
+
+        const tdUpdate = document.createElement('td');
+        tdUpdate.classList.add('border', 'border-gray-600', 'p-2', 'text-center');
+        tdUpdate.appendChild(statusSelect);
+        tr.appendChild(tdUpdate);
+
+        ordersTableBody.appendChild(tr);
+      });
+    });
+  }
+</script>
+
+</body>
+</html>
