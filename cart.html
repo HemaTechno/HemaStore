@@ -1,0 +1,205 @@
+<!-- cart.html -->
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>عربة التسوق</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+  <style>
+    body { font-family: 'Cairo', sans-serif; }
+  </style>
+</head>
+<body class="bg-gradient-to-br from-gray-100 to-white min-h-screen">
+  <header class="bg-white shadow p-4 flex justify-between items-center">
+    <h1 class="text-2xl font-bold text-blue-600">عربة التسوق</h1>
+    <nav>
+      <a href="index.html" class="mx-2 text-blue-500">الرئيسية</a>
+      <a href="books.html" class="mx-2">الكتب</a>
+      <a href="cart.html" class="mx-2 font-bold">عربة التسوق</a>
+      <a href="login.html" class="mx-2">تسجيل الدخول</a>
+    </nav>
+  </header>
+
+  <main class="p-6 max-w-4xl mx-auto">
+    <h2 class="text-3xl font-extrabold text-center text-gray-800 mb-8">منتجاتك في العربة</h2>
+
+    <div id="cart-container" class="space-y-4">
+      <!-- هنا ستعرض الكتب المضافة -->
+    </div>
+
+    <div id="empty-cart" class="text-center text-gray-500 mt-10 hidden">
+      عربة التسوق فارغة.
+      <a href="books.html" class="text-blue-600 underline">تصفح الكتب</a>
+    </div>
+
+    <div id="summary" class="mt-10 bg-white p-6 rounded-xl shadow-lg hidden">
+      <p class="mb-2 text-lg font-semibold">تكلفة الشحن: <span id="shipping-cost">0</span> جنيه</p>
+      <p class="mb-4 text-xl font-bold">الإجمالي الكلي: <span id="total-cost">0</span> جنيه</p>
+
+      <div id="fill-profile-msg" class="mb-4 text-red-600 hidden">
+        يرجى تعبئة بيانات العنوان وأرقام التواصل في <a href="profile.html" class="underline font-semibold">صفحة الملف الشخصي</a> قبل الدفع.
+      </div>
+
+      <button id="go-to-checkout" class="bg-blue-600 text-white px-6 py-3 rounded-xl hover:bg-blue-700 disabled:opacity-50" disabled>
+        اذهب للدفع
+      </button>
+    </div>
+  </main>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyAX8PWbKfWeBYzmX7sdrBhIT0Wp1yPjR04",
+      authDomain: "hemaern.firebaseapp.com",
+      databaseURL: "https://hemaern-default-rtdb.europe-west1.firebasedatabase.app",
+      projectId: "hemaern",
+      storageBucket: "hemaern.firebasestorage.app",
+      messagingSenderId: "533729874483",
+      appId: "1:533729874483:web:142462fdbd96156fe30946"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    const auth = firebase.auth();
+
+    const cartContainer = document.getElementById('cart-container');
+    const emptyCartMsg = document.getElementById('empty-cart');
+    const summary = document.getElementById('summary');
+    const shippingCostEl = document.getElementById('shipping-cost');
+    const totalCostEl = document.getElementById('total-cost');
+    const fillProfileMsg = document.getElementById('fill-profile-msg');
+    const checkoutBtn = document.getElementById('go-to-checkout');
+
+    let cartData = {};
+    let booksData = {};
+
+    function calculateCosts() {
+      let itemsCount = 0;
+      let costSum = 0;
+
+      for (const bookId in cartData) {
+        const quantity = cartData[bookId].quantity;
+        const book = booksData[bookId];
+        if (!book) continue;
+        itemsCount += quantity;
+        const price = (book.discount && book.discount < book.price) ? book.discount : book.price;
+        costSum += price * quantity;
+      }
+      // الشحن ثابت 50 + 10 جنيه لكل كتاب إضافي فوق واحد
+      let shippingCost = 50;
+      if (itemsCount > 1) {
+        shippingCost += 10 * (itemsCount - 1);
+      }
+      return { shippingCost, costSum, total: shippingCost + costSum };
+    }
+
+    function renderCart() {
+      cartContainer.innerHTML = '';
+      if (Object.keys(cartData).length === 0) {
+        emptyCartMsg.classList.remove('hidden');
+        summary.classList.add('hidden');
+        return;
+      }
+      emptyCartMsg.classList.add('hidden');
+      summary.classList.remove('hidden');
+
+      for (const bookId in cartData) {
+        const quantity = cartData[bookId].quantity;
+        const book = booksData[bookId];
+        if (!book) continue;
+
+        const priceDisplay = (book.discount && book.discount < book.price)
+          ? `<span class="line-through text-gray-500">${book.price} جنيه</span> <span class="font-bold text-green-600">${book.discount} جنيه</span>`
+          : `<span class="font-bold text-blue-700">${book.price} جنيه</span>`;
+
+        const itemHTML = `
+          <div class="flex items-center justify-between bg-white rounded-xl shadow p-4">
+            <img src="${book.image}" alt="غلاف ${book.title}" class="w-24 h-32 object-cover rounded" />
+            <div class="flex-1 mr-6">
+              <h3 class="text-lg font-bold text-gray-800">${book.title}</h3>
+              <p>السعر: ${priceDisplay}</p>
+              <p>الكمية المتوفرة: ${book.quantity}</p>
+            </div>
+            <div class="flex items-center space-x-2">
+              <button class="bg-red-500 text-white rounded px-3 py-1" onclick="changeQuantity('${bookId}', -1)">-</button>
+              <span class="font-semibold">${quantity}</span>
+              <button class="bg-green-600 text-white rounded px-3 py-1" onclick="changeQuantity('${bookId}', 1)">+</button>
+            </div>
+          </div>
+        `;
+        cartContainer.insertAdjacentHTML('beforeend', itemHTML);
+      }
+
+      const costs = calculateCosts();
+      shippingCostEl.textContent = costs.shippingCost;
+      totalCostEl.textContent = costs.total;
+
+      checkProfileAndEnableCheckout();
+    }
+
+    function changeQuantity(bookId, delta) {
+      const currentQty = cartData[bookId]?.quantity || 0;
+      const newQty = currentQty + delta;
+      if (newQty < 1) {
+        // حذف الكتاب من العربة إذا الكمية أصبحت صفر
+        db.ref(`carts/${auth.currentUser.uid}/${bookId}`).remove();
+        delete cartData[bookId];
+      } else if (newQty > booksData[bookId].quantity) {
+        alert('لا توجد كمية كافية لهذا الكتاب.');
+        return;
+      } else {
+        db.ref(`carts/${auth.currentUser.uid}/${bookId}`).set({ quantity: newQty });
+        cartData[bookId].quantity = newQty;
+      }
+      renderCart();
+    }
+
+    function checkProfileAndEnableCheckout() {
+      const userId = auth.currentUser.uid;
+      db.ref(`users/${userId}`).once('value').then(snapshot => {
+        const profile = snapshot.val();
+        if (!profile || !profile.address || !profile.phone) {
+          fillProfileMsg.classList.remove('hidden');
+          checkoutBtn.disabled = true;
+        } else {
+          fillProfileMsg.classList.add('hidden');
+          checkoutBtn.disabled = false;
+        }
+      });
+    }
+
+    checkoutBtn.addEventListener('click', () => {
+      // اذهب لصفحة الدفع (لم ننشئها بعد)
+      window.location.href = 'checkout.html';
+    });
+
+    function loadCart() {
+      const user = auth.currentUser;
+      if (!user) {
+        alert('يجب تسجيل الدخول أولاً لعرض العربة.');
+        window.location.href = 'login.html';
+        return;
+      }
+      db.ref('books').once('value').then(snapshot => {
+        booksData = snapshot.val() || {};
+        db.ref(`carts/${user.uid}`).once('value').then(cartSnapshot => {
+          cartData = cartSnapshot.val() || {};
+          renderCart();
+        });
+      });
+    }
+
+    auth.onAuthStateChanged(user => {
+      if (user) {
+        loadCart();
+      } else {
+        cartContainer.innerHTML = '';
+        emptyCartMsg.classList.remove('hidden');
+        summary.classList.add('hidden');
+      }
+    });
+  </script>
+</body>
+</html>
