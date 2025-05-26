@@ -1,0 +1,60 @@
+<!-- admin-login.html -->
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>تسجيل دخول الأدمن</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+</head>
+<body class="flex items-center justify-center min-h-screen bg-gray-900 text-white">
+
+  <div class="bg-gray-800 p-10 rounded-lg shadow-lg w-96 text-center">
+    <h1 class="text-2xl mb-6 font-bold">تسجيل دخول الأدمن</h1>
+    <button id="googleLoginBtn" class="w-full py-3 bg-blue-600 rounded hover:bg-blue-700 transition">تسجيل دخول بـ Google</button>
+    <div id="msg" class="mt-4"></div>
+  </div>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyAX8PWbKfWeBYzmX7sdrBhIT0Wp1yPjR04",
+      authDomain: "hemaern.firebaseapp.com",
+      databaseURL: "https://hemaern-default-rtdb.europe-west1.firebasedatabase.app",
+      projectId: "hemaern",
+      storageBucket: "hemaern.firebasestorage.app",
+      messagingSenderId: "533729874483",
+      appId: "1:533729874483:web:142462fdbd96156fe30946"
+    };
+    firebase.initializeApp(firebaseConfig);
+
+    const auth = firebase.auth();
+    const db = firebase.database();
+
+    const googleLoginBtn = document.getElementById('googleLoginBtn');
+    const msg = document.getElementById('msg');
+
+    googleLoginBtn.addEventListener('click', () => {
+      const provider = new firebase.auth.GoogleAuthProvider();
+      auth.signInWithPopup(provider)
+        .then(({ user }) => {
+          // هنا ممكن نتحقق من أن اليوزر أدمن حسب إيميله أو uid
+          const adminEmails = ["admin@example.com", "admin2@example.com"]; // عدل حسب إيميلات الأدمنز
+          if (!adminEmails.includes(user.email)) {
+            msg.textContent = "ليس لديك صلاحية دخول الأدمن";
+            auth.signOut();
+            return;
+          }
+          // تخزين بيانات الأدمن لو حبيت (اختياري)
+          window.location.href = "admin-dashboard.html";
+        })
+        .catch(err => {
+          msg.textContent = err.message;
+        });
+    });
+  </script>
+
+</body>
+</html>
