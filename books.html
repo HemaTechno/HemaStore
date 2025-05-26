@@ -1,0 +1,109 @@
+<!-- صفحة عرض الكتب (books.html) مع ربط Firebase -->
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>الكتب</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+  <style>
+    body { font-family: 'Cairo', sans-serif; }
+  </style>
+</head>
+<body class="bg-gradient-to-br from-gray-100 to-white min-h-screen">
+  <!-- الهيدر -->
+  <header class="bg-white shadow p-4 flex justify-between items-center">
+    <h1 class="text-2xl font-bold text-blue-600">مكتبة الكتب</h1>
+    <nav>
+      <a href="index.html" class="mx-2 text-blue-500">الرئيسية</a>
+      <a href="books.html" class="mx-2 font-bold">الكتب</a>
+      <a href="cart.html" class="mx-2">عربة التسوق</a>
+      <a href="login.html" class="mx-2">تسجيل الدخول</a>
+    </nav>
+  </header>
+
+  <!-- قائمة الكتب -->
+  <main class="p-6">
+    <h2 class="text-3xl font-extrabold text-center text-gray-800 mb-8">تصفح مجموعتنا المختارة من الكتب</h2>
+    <div id="books-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      <!-- الكتب ستُعرض ديناميكيًا هنا -->
+    </div>
+  </main>
+
+  <!-- الفوتر -->
+  <footer class="bg-white p-4 text-center text-sm text-gray-500 mt-8">
+    &copy; 2025 مكتبة الكتب. جميع الحقوق محفوظة.
+  </footer>
+
+  <script>
+    // إعداد Firebase
+    const firebaseConfig = {
+      apiKey: "AIzaSyAX8PWbKfWeBYzmX7sdrBhIT0Wp1yPjR04",
+      authDomain: "hemaern.firebaseapp.com",
+      databaseURL: "https://hemaern-default-rtdb.europe-west1.firebasedatabase.app",
+      projectId: "hemaern",
+      storageBucket: "hemaern.firebasestorage.app",
+      messagingSenderId: "533729874483",
+      appId: "1:533729874483:web:142462fdbd96156fe30946"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    const auth = firebase.auth();
+
+    const booksContainer = document.getElementById("books-container");
+
+    function loadBooks() {
+      db.ref("books").once("value", snapshot => {
+        booksContainer.innerHTML = "";
+        snapshot.forEach(child => {
+          const book = child.val();
+          const discountHtml = book.discount && book.discount < book.price
+            ? `<span class='text-gray-500 line-through'>${book.price} جنيه</span>
+               <span class='text-green-600 font-bold'>${book.discount} جنيه</span>`
+            : `<span class='text-blue-700 font-bold'>${book.price} جنيه</span>`;
+
+          const bookHTML = `
+            <div class="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-2xl transition">
+              <img src="${book.image}" alt="غلاف الكتاب" class="w-full h-56 object-cover">
+              <div class="p-4">
+                <h3 class="text-xl font-bold text-gray-800 mb-2">${book.title}</h3>
+                <p class="text-gray-600 mb-2">الكمية المتوفرة: <span class="font-semibold">${book.quantity}</span></p>
+                <div class="flex justify-between items-center mb-3">
+                  <div>${discountHtml}</div>
+                  <button onclick="addToCart('${child.key}', ${book.quantity})" class="bg-blue-600 text-white px-4 py-1 rounded-xl hover:bg-blue-700">أضف للعربة</button>
+                </div>
+              </div>
+            </div>
+          `;
+          booksContainer.innerHTML += bookHTML;
+        });
+      });
+    }
+
+    function addToCart(bookId, availableQuantity) {
+      const user = auth.currentUser;
+      if (!user) {
+        alert("يجب تسجيل الدخول أولاً لإضافة منتجات لعربة التسوق.");
+        window.location.href = "login.html";
+        return;
+      }
+
+      db.ref("carts/" + user.uid + "/" + bookId).once("value", snapshot => {
+        const current = snapshot.val() || { quantity: 0 };
+        const newQty = current.quantity + 1;
+        if (newQty > availableQuantity) {
+          alert("لا توجد كمية كافية لهذا الكتاب.");
+          return;
+        }
+        db.ref("carts/" + user.uid + "/" + bookId).set({ quantity: newQty });
+        alert("تمت الإضافة للعربة بنجاح.");
+      });
+    }
+
+    window.onload = loadBooks;
+  </script>
+</body>
+</html>
